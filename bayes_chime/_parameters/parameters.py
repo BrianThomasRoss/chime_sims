@@ -1,21 +1,24 @@
 """parameters/_base.
 """
-from collections import namedtuple
-from typing import Any, Callable, List, Dict, NamedTuple, Set, Tuple
+from abc import abstractmethod
+from collections import namedtuple, OrderedDict
+import __main__
+from typing import Any, Callable, List, Dict, NamedTuple
 
 # parameter metadata
 param_args = [
-    "param_key",
-    "default_val",
-    "param_dist",
-    "validators",
-    "param_desc",
+    ("key", str),
+    ("dtype", Any),
+    ("default_value", Any),
+    ("distribution", str),
+    ("validators", List[Callable]),
+    ("description", str),
 ]
 # Holds a single parameter's metadata
-RegisteredParameter = namedtuple("RegisteredParameter", param_args)
+RegisteredParameter = NamedTuple("RegisteredParameter", param_args)
 
 # Stores metadata for all configured parameters
-_registered_parameters: Dict[str, RegisteredParameter] = {}
+_parameter_registry: Dict[str, RegisteredParameter] = {}
 # Reserved keys for special use
 _reserved_keys: List[str] = ["all"]
 # Temporary holder for key value pair of parameter configuration
@@ -31,81 +34,228 @@ class ParameterError(AttributeError, KeyError):  # custom exception
     """
 
 
-def _get_param(pattern: str) -> None:
+def _get_param(pattern: str) -> RegisteredParameter:
     """Attempts to return the registered parameter"""
     p = pattern.lower()
-    if p in _registered_parameters:
-        return _registered_parameters[p]
+    if p in _parameter_registry:
+        return _parameter_registry[p]
     raise ParameterError(f"'{pattern}' is not a parameter")
 
 
 def _register_param(
-    param_key: str,  # -------- # parameter 'name'
-    default_val: Any,  # -------- # default value for the parameter if none is found
-    param_dist: str,  # -------- # parameter distribution group
-    validators: List[Callable],  # validation functions to be used on the parameter
-    param_desc: str = "",  # ------ # description of the parameter
+        key: str,  # ----------------# parameter 'name'
+        dtype: Any,  # ---------------# type(<parameter>)
+        default_value: Any,  # ------# default value for the parameter if none is found
+        distribution: str,  # -------# parameter distribution group
+        validators: List[Callable],  # validation functions to be used on the parameter
+        description: str = "",  # ---# description of the parameter
 ) -> None:
     """Attempts to register a parameter"""
-    p = param_key.lower()
-    if p in _registered_parameters:
-        raise ParameterError(f"'{param_key}' is already registered!")
+    p = key.lower()
+    if p in _parameter_registry:
+        raise ParameterError(f"'{key}' is already registered!")
+    # ensure default value type same as dtype
+    if type(dtype) != type(default_value):
+        raise ParameterError(f"Default value must be of same type as dtype[{dtype}]")
     # ensure the default value can be validated if validators are included
     if validators:
         for validate in validators:
-            validate(default_val)
-    if len(param_desc) == 0:
+            validate(default_value)
+    if len(description) == 0:
         raise ParameterError("Parameters must include a description")
     # if all checks pass register the parameter with the metadata
-    _registered_parameters[p] = RegisteredParameter(
-        param_key=param_key,
-        default_val=default_val,
-        param_dist=param_dist,
+    _parameter_registry[p] = RegisteredParameter(
+        key=key,
+        default_value=default_value,
+        distribution=distribution,
         validators=validators,
-        param_desc=param_desc,
+        description=description,
     )
 
 
 def _describe_param(pattern: str) -> str:
     param = _get_param(pattern)
-    return param.param_desc
+    return param.description
 
 
-def _get_param_defval(pattern: str) -> Any:
+def _get_param_default(pattern: str) -> Any:
     param = _get_param(pattern)
-    return param.default_val
+    return param.default_value
+
+
+def _get_param_type(pattern: str) -> Any:
+    """Returns the type of a registered parameter"""
+    param = _get_param(pattern.lower())
+    return param.dtype
+
+
+class ChimeParameters:
+    """
+    ChimeParameters
+    ===============
+
+    Holds the current state of all parameters. Reads parameters
+    from _param_config and accordingly creates a NamedTuple instance
+    which makes all parameters accessible through dot notation.
+
+    Example use
+    ---
+
+    ```Python
+    Pars = ChimeParameters()
+    Pars.get.initial_doubling_time
+    ```
+    ---
+    ```Bash
+    2.5
+    ```
+    """
+
+    _valid_parameters = {
+        # range of dates to run simulation
+        "sim_start",
+        "sim_stop",
+        # epidemiological parameters
+        "initial_doubling_time",
+        "incubation_days",
+        "incubation_rate",
+        "proba_hospitalized",
+        "proba_icu",
+        "proba_ventilatory",
+        "recovery_days",
+        # hospital / network parameters
+        "initial_hospitalized",
+        "initial_icu",
+        "initial_ventilatory",
+        "hospitalized_ALOS",
+        "icu_ALOS",
+        "ventilatory_ALOS",
+        # regional parameters
+        "initial_susceptible",
+        "initial_exposed",
+        "initial_infected",
+        "initial_recovered",
+    }
+
+    def __init__(self):
+        self.__set_parameters__()
+
+    def __reset_parameters__(self):
+        """Resets the _param_config registry and wipes own attributes"""
+        if hasattr(self, "get"):
+            delattr(self, "get")
+
+    def __set_parameters__(self):
+        """
+        Reads from _param_config and sets parameters accordingly if any
+        required parameters are not configured issues warning and reverts
+        to default_value from _parameter_registry
+        """
+        selected = [(p, _param_config[p]) for p in _param_config.keys()]
+        ordered = OrderedDict(selected)
+
+        _pars = namedtuple("_pars", ordered.keys())
+        self.get = _pars(**ordered)
+
+
+def build_dt_series(start_date: str, end_date: str):
+    s = start_date.split('-')
+    if (len(s[0]) != 4) or (len(s[1]) + len(s[2]) != 4):
+        raise ValueError('Dates must be formatted YYYY-MM-DD')
+    e = end_date.split('-')
+    if (len(e[0]) != 4) or (len(e[1]) + len(e[2]) != 4):
+        raise ValueError('Dates must be formatted YYYY-MM-DD')
+    return
 
 
 class Parameter(object):
+    """
+    Parameter
+    =========
+
+    Base class for all parameters. Parameter subclasses primary purpose
+    is to facilitate the decoupling of model and parameter states. Metadata
+    is reported to the parameter registry upon class definition via
+    overriding the __init_subclass__ built-in method. Upon instantiation
+    a parameter subclass can then self-validate any arguments passed to
+    it during instantiation. Parameter subclasses do not store the current
+    parameter state. Instead, this is done by the ChimeParameters object.
+
+    Attributes
+    ----------
+
+    - _key {str}:
+        parameter name
+    - _dtype {Any}:
+        type(<PARAMETER>)
+    - _default_value {Any}:
+        default value to be set when needed (must pass validation)
+    _ _distribution {str}:
+        ["constant", "beta", "gamma", "normal"]
+    - _validators {List[Callable]}:
+        list of validation functions which should be run on a parameter
+    - _description {str}:
+        description of the parameter
+
+    Custom Methods
+    --------------
+
+    - __validate__:
+        Runs the defined validation functions on a selected parameter
+    - __register__:
+        Registers the key, value pair (self._key, self._value) with
+        _param_config
+
+
+    Raises
+    ------
+
+    - ParameterError:
+        Extension of AttributeError and KeyError, thrown when parameter
+        already exists, is incorrectly configured or fails to meet another
+        criteria.
+    """
+
+    _key = None
+    _dtype = None
+    _default_value = None
+    _distribution = None
+    _validators = None
+    _description = None
+
     def __new__(cls, *args, **kwargs):
+        """Allocator prevents object creation if already registered"""
         if cls._key in _param_config:
             raise ParameterError(f"'{cls._key}' already registered!")
         return super().__new__(cls)
 
     def __init_subclass__(cls, *args, **kwargs):
-        """Register parameter metadata at subclass definition"""
+        """Registers parameter metadata at subclass definition"""
         _register_param(
-            param_key=cls._key,
-            default_val=cls._defval,
-            param_dist=cls._dist,
+            key=cls._key,
+            dtype=cls._dtype,
+            default_value=cls._default_value,
+            distribution=cls._distribution,
             validators=cls._validators,
-            param_desc=cls._description,
+            description=cls._description,
         )
-
         return super().__init_subclass__(**kwargs)
 
     def __setattr__(self, name, value):
-        "If parameter already set throw error"
+        """Raises parameter error if parameter already configured"""
         if self._key in _param_config:
             raise ParameterError("Parameters are immutable!")
         else:
             return super().__setattr__(name, value)
 
     def __validate__(self, *args, **kwargs):
+        """
+        Utilizes validators registered at subclass definition to
+        validate inputs upon instantiation.
+        """
         if "_value" in zip(args, kwargs):
             for v in self._validators:
                 v(kwargs["_value"])
 
     def __describe__(self):
         return self._description
-

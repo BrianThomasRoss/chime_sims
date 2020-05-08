@@ -1,6 +1,11 @@
-.idea/
+# Editors
+.idea/*
+.vscode/*
+# Byte code
 __pycache__/
+# Pickle files
 *.pkl
+# MacOS
 .DS_Store
 output/*
 !output/
