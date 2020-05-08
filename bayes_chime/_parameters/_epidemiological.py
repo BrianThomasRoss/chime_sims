@@ -48,8 +48,8 @@ class HospitalizationRate(Parameter):
     _description = "Proportion of infected individuals requiring hospitalization"
 
 
-class CriticalRate(Parameter):
-    _key = "critical_rate"
+class ICURate(Parameter):
+    _key = "icu_rate"
     _default_value = (0.45, 52.05931116, 96.86741968)
     _distribution = "beta"
     _validators = []
