@@ -77,7 +77,7 @@ def read_data(file_name: str) -> DataFrame:
         .astype(int)
     )
     for col in ["hosp", "vent"]:
-        if not col in df.columns:
+        if col not in df.columns:
             raise KeyError(f"Could not locate column {col}.")
 
     return df
