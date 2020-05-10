@@ -10,6 +10,7 @@ from .parameters import Parameter
 
 class RecoveryDays(Parameter):
     _key = "recovery_days"
+    _dtype = float
     _default_value = 14.0
     _distribution = "constant"
     _validators = []
@@ -18,6 +19,7 @@ class RecoveryDays(Parameter):
 
 class IncubationDays(Parameter):
     _key = "incubation_days"
+    _dtype = float
     _default_value = 5.0
     _distribution = "constant"
     _validators = []
@@ -26,7 +28,9 @@ class IncubationDays(Parameter):
 
 class Nu(Parameter):
     _key = "nu"
-    _default_value = (2.5, 93.95521690000001, 0.02634306)
+    _dtype = float
+    _default_value = 2.5
+    _default_distributions = (93.95521690000001, 0.02634306)
     _distribution = "gamma"
     _validators = []
     _description = "Networked contact structure power-law exponent"
@@ -34,7 +38,9 @@ class Nu(Parameter):
 
 class Beta(Parameter):
     _key = "beta"
-    _default_value = (0.25, 5.0, 10.0)
+    _dtype = tuple
+    _default_value = 0.25
+    _default_distribution = (5.0, 10.0)
     _distribution = "beta"
     _validators = []
     _description = "SEIR beta parameter (force of infection)"
@@ -42,6 +48,7 @@ class Beta(Parameter):
 
 class HospitalizationRate(Parameter):
     _key = "hospitalization_rate"
+    _dtype =
     _default_value = (0.025, 6.326832789, 0.004168888)
     _distribution = "gamma"
     _validators = []

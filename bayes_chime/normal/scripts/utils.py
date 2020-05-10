@@ -109,7 +109,7 @@ def dump_results(
     prediction_df = model.propagate_uncertainties(xx, fit.p)
     prediction_df.index = prediction_df.index.round("H")
     if model.fit_start_date:
-        prediction_df = prediction_df.loc[model.fit_start_date :]
+        prediction_df = prediction_df.loc[model.fit_start_date:]
 
     # Dump forecast
     (
