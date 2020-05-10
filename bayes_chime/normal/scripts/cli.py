@@ -107,7 +107,7 @@ def parse_args():
     parser.add_argument(
         "-k",
         "--spline_dimension",
-        help = "The number of knots to add to each spline term",
+        help="The number of knots to add to each spline term",
         type=int,
         default=0,
     )
@@ -115,8 +115,8 @@ def parse_args():
         "-P",
         "--spline_power",
         help="Exponent on the truncated power spline",
-        type = int,
-        default = 2,)
+        type=int,
+        default=2,)
     parser.add_argument(
         "-X",
         "--cross_validate",

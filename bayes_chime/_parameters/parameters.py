@@ -1,11 +1,16 @@
 """parameters/_base.
 """
 from abc import abstractmethod
+from time import localtime
+from datetime import timezone, datetime, date
 from collections import namedtuple, OrderedDict
-import __main__
 from typing import Any, Callable, List, Dict, NamedTuple
 
+from bayes_chime._config import Settings
+
 # parameter metadata
+from dateutil.utils import today
+
 param_args = [
     ("key", str),
     ("dtype", Any),
@@ -66,6 +71,7 @@ def _register_param(
     # if all checks pass register the parameter with the metadata
     _parameter_registry[p] = RegisteredParameter(
         key=key,
+        dtype=dtype,
         default_value=default_value,
         distribution=distribution,
         validators=validators,
@@ -110,35 +116,31 @@ class ChimeParameters:
     2.5
     ```
     """
+    __cache_ = []
 
-    _valid_parameters = {
-        # range of dates to run simulation
-        "sim_start",
-        "sim_stop",
-        # epidemiological parameters
-        "initial_doubling_time",
-        "incubation_days",
-        "incubation_rate",
-        "proba_hospitalized",
-        "proba_icu",
-        "proba_ventilatory",
-        "recovery_days",
-        # hospital / network parameters
-        "initial_hospitalized",
-        "initial_icu",
-        "initial_ventilatory",
-        "hospitalized_ALOS",
-        "icu_ALOS",
-        "ventilatory_ALOS",
-        # regional parameters
-        "initial_susceptible",
-        "initial_exposed",
-        "initial_infected",
-        "initial_recovered",
-    }
+    _log_file: str = ""
 
-    def __init__(self):
+    _dt_params = ['sim_start', 'sim_stop']
+    _epidemiological_params = [
+        'recovery_days', 'initial_doubling_time', 'hospitalized_rate', 'icu_rate', 'vent_rate']
+
+    def __init__(self, logging: bool=False):
+        self.log = logging
         self.__set_parameters__()
+
+    @property
+    def reset(self):
+        """Reset the stored parameters"""
+
+        if self.log:
+            with open(_log_file, 'a') as f:
+                f.writelines(self.get.)
+
+    @staticmethod
+    def __log_parameters__(self):
+        heading = f"{}"
+        log_txt = \
+            f""""""
 
     def __reset_parameters__(self):
         """Resets the _param_config registry and wipes own attributes"""
