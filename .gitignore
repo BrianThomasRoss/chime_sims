@@ -11,6 +11,5 @@ __pycache__/
 output/*
 !output/
 *.egg-info
-drafts/
-*~
-out_misc/
+
+.mypy_cache/
